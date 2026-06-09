@@ -1,0 +1,13 @@
+# compiled binary
+app
+
+# test cache
+*.test
+
+# environment / secrets
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
