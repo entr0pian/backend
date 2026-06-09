@@ -35,14 +35,14 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/taskapp-backend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/taskapp-backend:${{ github.sha }}
 
-#      - name: Update Helm chart image tag
-#        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-#        run: |
-#          git clone https://x-access-token:${{ secrets.HELMCHARTS_TOKEN }}@github.com/entr0pian/helmcharts.git
-#          cd helmcharts
-#          sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" backend/values.yaml
-#          git config user.email "github-actions@github.com"
-#          git config user.name "GitHub Actions"
-#          git add backend/values.yaml
-#          git commit -m "ci: update backend image tag to ${{ github.sha }}"
-#          git push
+      - name: Update Helm chart image tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git clone https://x-access-token:${{ secrets.HELMCHARTS_TOKEN }}@github.com/entr0pian/helm-charts.git
+          cd helm-charts
+          sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" backend/values.yaml
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add backend/values.yaml
+          git commit -m "ci: update backend image tag to ${{ github.sha }}"
+          git push
