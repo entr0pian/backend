@@ -1,0 +1,24 @@
+image:
+  repository: boicotaz/taskapp-backend
+  tag: "latest"
+
+replicas: 2
+
+database:
+  enabled: true
+  dbName: taskdb
+  size: small
+  schema:
+    sql: |
+      CREATE TABLE IF NOT EXISTS tasks (
+        id          SERIAL PRIMARY KEY,
+        title       VARCHAR(255),
+        description TEXT,
+        status      VARCHAR(50),
+        created_at  TIMESTAMP DEFAULT NOW()
+      );
+
+queue:
+  enabled: true
+  type: standard
+  deadLetter: false
