@@ -40,7 +40,7 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.HELMCHARTS_TOKEN }}@github.com/entr0pian/argocd.git
           cd argocd
-          sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" apps/values-dev.yaml
+          yq -i '.backend.image.tag = "${{ github.sha }}"' apps/values-dev.yaml
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add apps/values-dev.yaml
@@ -52,7 +52,7 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.HELMCHARTS_TOKEN }}@github.com/entr0pian/argocd.git
           cd argocd
-          sed -i "s/tag: .*/tag: \"${{ github.sha }}\"/" apps/values-prod.yaml
+          yq -i '.backend.image.tag = "${{ github.sha }}"' apps/values-prod.yaml
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add apps/values-prod.yaml
