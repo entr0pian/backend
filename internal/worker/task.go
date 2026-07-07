@@ -28,9 +28,16 @@ func TaskWorker(taskQueue chan model.Task, logQueue chan model.TaskEvent) {
 	}
 }
 
+// sqsClient is the subset of *sqs.Client used by SQSWorker, extracted so tests
+// can substitute a fake implementation instead of hitting real AWS.
+type sqsClient interface {
+	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+}
+
 // SQSWorker polls the given queue and inserts each message as a TODO task.
 // It runs until ctx is cancelled.
-func SQSWorker(ctx context.Context, client *sqs.Client, queueURL string, database *sql.DB, logQueue chan model.TaskEvent) {
+func SQSWorker(ctx context.Context, client sqsClient, queueURL string, database *sql.DB, logQueue chan model.TaskEvent) {
 	maxMessages := envInt32("SQS_MAX_MESSAGES", 1)
 	workSleep := time.Duration(envInt32("SQS_WORK_SLEEP_SECONDS", 1)) * time.Second
 
@@ -50,15 +57,34 @@ func SQSWorker(ctx context.Context, client *sqs.Client, queueURL string, databas
 			if ctx.Err() != nil {
 				return
 			}
-			logQueue <- model.TaskEvent{Action: "sqs_receive_error", Level: "error", Timestamp: time.Now()}
+			logQueue <- model.TaskEvent{Action: "sqs_receive_error", Error: err.Error(), Level: "error", Timestamp: time.Now()}
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		for _, msg := range out.Messages {
+			messageID := aws.ToString(msg.MessageId)
+
 			var t model.Task
-			if err := json.Unmarshal([]byte(aws.ToString(msg.Body)), &t); err != nil || t.Title == "" {
-				logQueue <- model.TaskEvent{Action: "sqs_invalid_message", Level: "error", Timestamp: time.Now()}
+			if err := json.Unmarshal([]byte(aws.ToString(msg.Body)), &t); err != nil {
+				logQueue <- model.TaskEvent{
+					Action:       "sqs_invalid_message",
+					Reason:       "json_parse_error",
+					Error:        err.Error(),
+					SQSMessageID: messageID,
+					Level:        "error",
+					Timestamp:    time.Now(),
+				}
+				continue
+			}
+			if t.Title == "" {
+				logQueue <- model.TaskEvent{
+					Action:       "sqs_invalid_message",
+					Reason:       "missing_title",
+					SQSMessageID: messageID,
+					Level:        "error",
+					Timestamp:    time.Now(),
+				}
 				continue
 			}
 
@@ -66,7 +92,13 @@ func SQSWorker(ctx context.Context, client *sqs.Client, queueURL string, databas
 				`INSERT INTO tasks (title, description, status) VALUES ($1, $2, 'todo') RETURNING id`,
 				t.Title, t.Description,
 			).Scan(&t.ID); err != nil {
-				logQueue <- model.TaskEvent{Action: "sqs_db_insert_error", Level: "error", Timestamp: time.Now()}
+				logQueue <- model.TaskEvent{
+					Action:       "sqs_db_insert_error",
+					Error:        err.Error(),
+					SQSMessageID: messageID,
+					Level:        "error",
+					Timestamp:    time.Now(),
+				}
 				continue
 			}
 
