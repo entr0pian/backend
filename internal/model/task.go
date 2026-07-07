@@ -10,8 +10,11 @@ type Task struct {
 }
 
 type TaskEvent struct {
-	ID        int       `json:"id,omitempty"`
-	Action    string    `json:"action,omitempty"`
-	Timestamp time.Time `json:"ts"`
-	Level     string    `json:"level"`
+	ID           int       `json:"id,omitempty"`
+	Action       string    `json:"action,omitempty"`
+	Error        string    `json:"error,omitempty"`
+	Reason       string    `json:"reason,omitempty"`
+	SQSMessageID string    `json:"sqs_message_id,omitempty"`
+	Timestamp    time.Time `json:"ts"`
+	Level        string    `json:"level"`
 }
